@@ -1,4 +1,4 @@
-package br.ufscar.dc.compiladores1.trabalho1;
+package CC1.T1;
 
 public class EntradaTabelaDeSimbolos {
     private String lexema;

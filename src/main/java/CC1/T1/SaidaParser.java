@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package br.ufscar.dc.compiladores1.trabalho1;
+package CC1.T1;
 
 public class SaidaParser {
 

@@ -1,8 +1,7 @@
-package br.ufscar.dc.compiladores1.trabalho1;
+package CC1.T1;
 
 import java.io.IOException;
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
+
 import org.antlr.v4.runtime.RecognitionException;
 
 public class TestaAnalisadorSintatico {
