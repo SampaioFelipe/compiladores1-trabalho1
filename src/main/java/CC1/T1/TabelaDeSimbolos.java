@@ -9,6 +9,7 @@ public class TabelaDeSimbolos {
     }
     
     public static void adicionarSimbolo(String lexema, Tipo tipo) {
+        System.out.println(lexema);
         EntradaTabelaDeSimbolos etds = new EntradaTabelaDeSimbolos(lexema, tipo);
         getInstancia().adicionarSimbolo(etds);
     }

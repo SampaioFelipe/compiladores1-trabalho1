@@ -17,9 +17,9 @@ CADEIA : ('"'(~'"')*'"') | ([\\'](~[\\'])*[\\']);
 
 COMENTARIO : '--'(~[\n]|[\r])+ -> skip;
 
-WS : ' ' -> skip; // Whitespace
+WS : (' ' | [\t]) -> skip; // Whitespace
 
-EOL : ([\n] | [\r] | [\t]) -> skip;
+EOL : ([\n] | [\r] | [EOF]) -> skip;
 
 PALAVRA_RESERVADA : 'and' | 'break' | 'do' | 'else' | 'elseif' |
                     'end' | 'false' | 'for' | 'function' | 'if' |
@@ -35,7 +35,6 @@ IDENTIFICADOR : (LETRA|'_')(LETRA|DIGITO|'_')*;
 
 NUMERO : (DIGITO)+('.'(DIGITO)+)?;
 
-
 /*
 * Regras Sintáticas
 */
@@ -50,7 +49,7 @@ comando : listavar '=' listaexp | chamadadefuncao | 'do' bloco 'end' |
             'while' exp 'do' bloco 'end' | 'repeat' bloco 'until' exp |
             'if' exp 'then' bloco ('elseif' exp 'then' bloco)* ('else' bloco)? 'end' |
             'for' IDENTIFICADOR '=' exp ',' exp (',' exp)? 'do' bloco 'end' |
-            'for' listadenomes 'in' listaexp 'do' bloco 'end' | 'function' nomedafuncao corpodafuncao { TabelaDeSimbolos.adicionarSimbolo($nomedafuncao.text,Tipo.FUNCAO);}|
+            'for' listadenomes 'in' listaexp 'do' bloco 'end' | 'function' nomedafuncao { TabelaDeSimbolos.adicionarSimbolo($nomedafuncao.text,Tipo.FUNCAO);} corpodafuncao |
             'local' 'function' IDENTIFICADOR corpodafuncao | 'local' listadenomes ('=' listaexp)?;
 
 ultimocomando : 'return' (listaexp)? | 'break';
@@ -61,12 +60,33 @@ listavar : var (',' var)*;
 
 var : IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL); } | expprefixo '[' exp ']' | expprefixo '.' IDENTIFICADOR ;
 
-listadenomes : IDENTIFICADOR (',' IDENTIFICADOR)*;
+listadenomes : IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);} (',' IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);})*;
 
 listaexp : (exp ',')* exp;
 
-exp : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
-    expprefixo | construtortabela | exp opbin exp | opunaria exp;
+//exp : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
+//    expprefixo | construtortabela | exp opbin exp | opunaria exp;
+
+//exp : exp opbin exp | opunaria exp;
+exp : exp1 opbin7 exp | exp1;
+
+exp1 : exp2 opbin6 exp1 | exp2;
+
+exp2 : exp3 opbin5 exp2 | exp3;
+
+exp3 : exp4 opbin4 exp3 | exp4;
+
+exp4 : exp5 opbin3 exp4 | exp5;
+
+exp5 : opunaria exp5 | exp6;
+
+exp6 : exp7 opbin2 exp6 | exp7;
+
+exp7 : exp_operandos opbin1 exp7 | exp_operandos;
+
+
+exp_operandos : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
+                expprefixo | construtortabela ;
 
 //expprefixo : var | chamadadefuncao | '(' exp ')';
 
@@ -81,12 +101,12 @@ expprefixo_aux : '[' exp ']' expprefixo_aux | '[' exp ']' |
 
 chamadadefuncao : IDENTIFICADOR expprefixo_aux args chamadadefuncao_aux |
                   IDENTIFICADOR args | IDENTIFICADOR expprefixo_aux args | IDENTIFICADOR args chamadadefuncao_aux |
-                  '(' exp ')' 'fim' expprefixo_aux args chamadadefuncao_aux |
-                  '(' exp ')' 'fim' args | '(' exp ')' 'fim' expprefixo_aux args | '(' exp ')' 'fim' args chamadadefuncao_aux |
+                  '(' exp ')'  expprefixo_aux args chamadadefuncao_aux |
+                  '(' exp ')'  args | '(' exp ')'  expprefixo_aux args | '(' exp ')'  args chamadadefuncao_aux |
                   IDENTIFICADOR expprefixo_aux ':' IDENTIFICADOR args chamadadefuncao_aux |
                   IDENTIFICADOR ':' IDENTIFICADOR args | IDENTIFICADOR expprefixo_aux ':' IDENTIFICADOR args | IDENTIFICADOR ':' IDENTIFICADOR args chamadadefuncao_aux |
-                  '(' exp ')' 'fim' expprefixo_aux ':' IDENTIFICADOR args chamadadefuncao_aux |
-                  '(' exp ')' 'fim' ':' IDENTIFICADOR args | '(' exp ')' 'fim' expprefixo_aux ':' IDENTIFICADOR args | '(' exp ')' 'fim' ':' IDENTIFICADOR args chamadadefuncao_aux;
+                  '(' exp ')' expprefixo_aux ':' IDENTIFICADOR args chamadadefuncao_aux |
+                  '(' exp ')'  ':' IDENTIFICADOR args | '(' exp ')' expprefixo_aux ':' IDENTIFICADOR args | '(' exp ')' ':' IDENTIFICADOR args chamadadefuncao_aux;
 
 chamadadefuncao_aux : expprefixo_aux args chamadadefuncao_aux |
                       args | expprefixo_aux args | args chamadadefuncao_aux |
@@ -109,7 +129,21 @@ campo : '[' exp ']' '=' exp | IDENTIFICADOR '=' exp | exp;
 
 separadordecampos : ',' | ';';
 
-opbin : '+' | '-' | '*' | '/' | '^' | '%' | '..' | '<' | '<=' | '>' | '>=' | '==' | '~=' |
-       'and' | 'or';
+//opbin : '+' | '-' | '*' | '/' | '^' | '%' | '..' | '<' | '<=' | '>' | '>=' | '==' | '~=' |
+//       'and' | 'or';
+
+opbin1 : '^';
+
+opbin2 : '*' | '/' | '%';
+
+opbin3 : '+' | '-';
+
+opbin4 : '..';
+
+opbin5 : '<' | '<=' | '>' | '>=' | '==' | '~=';
+
+opbin6 : 'and';
+
+opbin7 : 'or';
 
 opunaria : '-' | 'not' | '#';
