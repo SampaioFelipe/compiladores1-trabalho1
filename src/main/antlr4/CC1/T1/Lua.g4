@@ -48,9 +48,9 @@ bloco : trecho;
 comando : listavar '=' listaexp | chamadadefuncao | 'do' bloco 'end' |
             'while' exp 'do' bloco 'end' | 'repeat' bloco 'until' exp |
             'if' exp 'then' bloco ('elseif' exp 'then' bloco)* ('else' bloco)? 'end' |
-            'for' IDENTIFICADOR '=' exp ',' exp (',' exp)? 'do' bloco 'end' |
+            'for' IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);}  '=' exp ',' exp (',' exp)? 'do' bloco 'end' |
             'for' listadenomes 'in' listaexp 'do' bloco 'end' | 'function' nomedafuncao { TabelaDeSimbolos.adicionarSimbolo($nomedafuncao.text,Tipo.FUNCAO);} corpodafuncao |
-            'local' 'function' IDENTIFICADOR corpodafuncao | 'local' listadenomes ('=' listaexp)?;
+            'local' 'function' IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.FUNCAO);} corpodafuncao | 'local' listadenomes ('=' listaexp)?;
 
 ultimocomando : 'return' (listaexp)? | 'break';
 
@@ -58,7 +58,7 @@ nomedafuncao : IDENTIFICADOR ('.' IDENTIFICADOR)* (':' IDENTIFICADOR)?;
 
 listavar : var (',' var)*;
 
-var : IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL); } | expprefixo '[' exp ']' | expprefixo '.' IDENTIFICADOR ;
+var : IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL); } | expprefixo '[' exp ']' | expprefixo '.' IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);} ;
 
 listadenomes : IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);} (',' IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);})*;
 
@@ -90,7 +90,7 @@ exp_operandos : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
 
 //expprefixo : var | chamadadefuncao | '(' exp ')';
 
-expprefixo : IDENTIFICADOR expprefixo_aux | IDENTIFICADOR |
+expprefixo : IDENTIFICADOR expprefixo_aux | IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);} |
              chamadadefuncao expprefixo_aux | chamadadefuncao | expprefixo_aux |
              '(' exp ')' expprefixo_aux | '(' exp ')';
 
@@ -100,10 +100,10 @@ expprefixo_aux : '[' exp ']' expprefixo_aux | '[' exp ']' |
 //chamadadefuncao : expprefixo args | expprefixo ':' IDENTIFICADOR args;
 
 chamadadefuncao : IDENTIFICADOR expprefixo_aux args chamadadefuncao_aux |
-                  IDENTIFICADOR args | IDENTIFICADOR expprefixo_aux args | IDENTIFICADOR args chamadadefuncao_aux |
+                  IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.FUNCAO);} args | IDENTIFICADOR expprefixo_aux args | IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.FUNCAO);} args chamadadefuncao_aux |
                   '(' exp ')'  expprefixo_aux args chamadadefuncao_aux |
                   '(' exp ')'  args | '(' exp ')'  expprefixo_aux args | '(' exp ')'  args chamadadefuncao_aux |
-                  IDENTIFICADOR expprefixo_aux ':' IDENTIFICADOR args chamadadefuncao_aux |
+                  IDENTIFICADOR expprefixo_aux ':' IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.FUNCAO);} args chamadadefuncao_aux |
                   IDENTIFICADOR ':' IDENTIFICADOR args | IDENTIFICADOR expprefixo_aux ':' IDENTIFICADOR args | IDENTIFICADOR ':' IDENTIFICADOR args chamadadefuncao_aux |
                   '(' exp ')' expprefixo_aux ':' IDENTIFICADOR args chamadadefuncao_aux |
                   '(' exp ')'  ':' IDENTIFICADOR args | '(' exp ')' expprefixo_aux ':' IDENTIFICADOR args | '(' exp ')' ':' IDENTIFICADOR args chamadadefuncao_aux;
@@ -125,7 +125,7 @@ construtortabela : '{' (listadecampos)? '}';
 
 listadecampos : campo (separadordecampos campo)* (separadordecampos)?;
 
-campo : '[' exp ']' '=' exp | IDENTIFICADOR '=' exp | exp;
+campo : '[' exp ']' '=' exp | IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);} '=' exp | exp;
 
 separadordecampos : ',' | ';';
 
