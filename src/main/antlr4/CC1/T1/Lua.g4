@@ -1,5 +1,11 @@
 grammar Lua;
 
+// TODO: Preencher no final para a entrega
+@members {
+   public static String grupo="<<Digite os RAs do grupo aqui>>";
+}
+
+
 /*
 * Regras Léxicas
 */
@@ -7,6 +13,13 @@ grammar Lua;
 fragment LETRA : ('a'..'z'|'A'..'Z');
 fragment DIGITO : ('0'..'9');
 
+CADEIA : ('"'(~'"')*'"') | ([\\'](~[\\'])*[\\']);
+
+COMENTARIO : '--'(~[\n]|[\r])+ -> skip;
+
+WS : ' ' -> skip; // Whitespace
+
+EOL : ([\n] | [\r] | [\t]) -> skip;
 
 PALAVRA_RESERVADA : 'and' | 'break' | 'do' | 'else' | 'elseif' |
                     'end' | 'false' | 'for' | 'function' | 'if' |
@@ -14,64 +27,77 @@ PALAVRA_RESERVADA : 'and' | 'break' | 'do' | 'else' | 'elseif' |
                      'return' | 'then' | 'true' | 'until' | 'while';
 
 SIMBOLO_RESERVADO : '+' | '-' | '*' | '/' | '%' | '^' | '#' |
-                    '=='| '~=' | '<=' | '>=' | '<' | '>' | '=' |
+                    '==' | '~=' | '<=' | '>=' | '<' | '>' | '=' |
                     '(' | ')' | '{' | '}' | '[' | ']' |
                     ';' | ':' | ',' | '.' | '..' | '...';
 
 IDENTIFICADOR : (LETRA|'_')(LETRA|DIGITO|'_')*;
 
-// Cadeias de caracteres literais podem ser delimitadas através do uso de aspas simples ou aspas duplas
-
-CADEIA : ('\'')|(' ');
-
 NUMERO : (DIGITO)+('.'(DIGITO)+)?;
-
-WS : ' ' {skip()}; // Whitespace
 
 
 /*
 * Regras Sintáticas
 */
 
-//programa : IDENTIFICADOR | PALAVRA_RESERVADA;
-
 programa : trecho;
 
 trecho : (comando (';')?)* (ultimocomando (';')?)?;
-// Isso é necessário?
+
 bloco : trecho;
 
-comando : listavar '=' listaexp | chamadadefuncao | do bloco end |
-            while exp do bloco end | repeat bloco until exp |
-            if exp then bloco (elseif exp then bloco)* (else bloco)? end |
-            for IDENTIFICADOR '=' exp ',' exp (',' exp)? do bloco end |
-            for listadenomes in listaexp do bloco end | function nomedafuncao corpodafuncao |
-            local function IDENTIFICADOR corpodafuncao | local listadenomes ('=' listaexp)?;
+comando : listavar '=' listaexp | chamadadefuncao | 'do' bloco 'end' |
+            'while' exp 'do' bloco 'end' | 'repeat' bloco 'until' exp |
+            'if' exp 'then' bloco ('elseif' exp 'then' bloco)* ('else' bloco)? 'end' |
+            'for' IDENTIFICADOR '=' exp ',' exp (',' exp)? 'do' bloco 'end' |
+            'for' listadenomes 'in' listaexp 'do' bloco 'end' | 'function' nomedafuncao corpodafuncao { TabelaDeSimbolos.adicionarSimbolo($nomedafuncao.text,Tipo.FUNCAO);}|
+            'local' 'function' IDENTIFICADOR corpodafuncao | 'local' listadenomes ('=' listaexp)?;
 
-ultimocomando : return (listaexp)? | break;
+ultimocomando : 'return' (listaexp)? | 'break';
 
-nomedafuncao : IDENTIFICADOR ('.' IDENTIFICADOR)+ (':' IDENTIFICADOR)?;
+nomedafuncao : IDENTIFICADOR ('.' IDENTIFICADOR)* (':' IDENTIFICADOR)?;
 
 listavar : var (',' var)*;
 
-var : IDENTIFICADOR | expprefixo '[' exp ']' | expprefixo '.' IDENTIFICADOR;
+var : IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL); } | expprefixo '[' exp ']' | expprefixo '.' IDENTIFICADOR ;
 
 listadenomes : IDENTIFICADOR (',' IDENTIFICADOR)*;
 
 listaexp : (exp ',')* exp;
 
-exp : nil | false | true | NUMERO | CADEIA | '...' | funcao |
+exp : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
     expprefixo | construtortabela | exp opbin exp | opunaria exp;
 
-expprefixo : var | chamadadefuncao | '(' exp ')';
+//expprefixo : var | chamadadefuncao | '(' exp ')';
 
-chamadadefuncao : expprefixo args | expprefixo ':' IDENTIFICADOR args;
+expprefixo : IDENTIFICADOR expprefixo_aux | IDENTIFICADOR |
+             chamadadefuncao expprefixo_aux | chamadadefuncao | expprefixo_aux |
+             '(' exp ')' expprefixo_aux | '(' exp ')';
+
+expprefixo_aux : '[' exp ']' expprefixo_aux | '[' exp ']' |
+                 '.' IDENTIFICADOR expprefixo_aux | '.' IDENTIFICADOR;
+
+//chamadadefuncao : expprefixo args | expprefixo ':' IDENTIFICADOR args;
+
+chamadadefuncao : IDENTIFICADOR expprefixo_aux args chamadadefuncao_aux |
+                  IDENTIFICADOR args | IDENTIFICADOR expprefixo_aux args | IDENTIFICADOR args chamadadefuncao_aux |
+                  '(' exp ')' 'fim' expprefixo_aux args chamadadefuncao_aux |
+                  '(' exp ')' 'fim' args | '(' exp ')' 'fim' expprefixo_aux args | '(' exp ')' 'fim' args chamadadefuncao_aux |
+                  IDENTIFICADOR expprefixo_aux ':' IDENTIFICADOR args chamadadefuncao_aux |
+                  IDENTIFICADOR ':' IDENTIFICADOR args | IDENTIFICADOR expprefixo_aux ':' IDENTIFICADOR args | IDENTIFICADOR ':' IDENTIFICADOR args chamadadefuncao_aux |
+                  '(' exp ')' 'fim' expprefixo_aux ':' IDENTIFICADOR args chamadadefuncao_aux |
+                  '(' exp ')' 'fim' ':' IDENTIFICADOR args | '(' exp ')' 'fim' expprefixo_aux ':' IDENTIFICADOR args | '(' exp ')' 'fim' ':' IDENTIFICADOR args chamadadefuncao_aux;
+
+chamadadefuncao_aux : expprefixo_aux args chamadadefuncao_aux |
+                      args | expprefixo_aux args | args chamadadefuncao_aux |
+                      expprefixo_aux':' IDENTIFICADOR args chamadadefuncao_aux |
+                      ':' IDENTIFICADOR args | expprefixo_aux':' IDENTIFICADOR args | ':' IDENTIFICADOR args chamadadefuncao_aux;
 
 args : '(' (listaexp)? ')' | construtortabela | CADEIA;
 
-funcao : function corpodafuncao;
+funcao : 'function' corpodafuncao;
 
-corpodafuncao : '(' (listapar)? ')' bloco end;
+corpodafuncao : '(' (listapar)? ')' bloco 'end';
 
 listapar : listadenomes (',' '...')? | '...';
 
@@ -84,15 +110,6 @@ campo : '[' exp ']' '=' exp | IDENTIFICADOR '=' exp | exp;
 separadordecampos : ',' | ';';
 
 opbin : '+' | '-' | '*' | '/' | '^' | '%' | '..' | '<' | '<=' | '>' | '>=' | '==' | '~=' |
-       and | or;
+       'and' | 'or';
 
-opunaria : '-' | not | '#';
-
-
-
-
-
-// TODO: Preencher no final para a entrega
-//@members {
-//   public static String grupo="<<Digite os RAs do grupo aqui>>";
-//}
+opunaria : '-' | 'not' | '#';
