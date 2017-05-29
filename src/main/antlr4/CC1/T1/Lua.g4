@@ -115,6 +115,9 @@ opbin7 : 'or';
 
 opunaria : '-' | 'not' | '#'; // Regra original mantida
 
+
+//A produção exp_operandos foi criada para simplificar as regras modificadas
+//que implementam a precedência de operadores
 exp_operandos : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
                 expprefixo | construtortabela ;
 // Fim da alteração de precedência de operadores
