@@ -1,26 +1,35 @@
 grammar Lua;
 
-// TODO: Preencher no final para a entrega
 @members {
-   public static String grupo="<<Digite os RAs do grupo aqui>>";
+   public static String grupo="619523,619655,619744";
 }
-
 
 /*
 * Regras Léxicas
+* Foram utilizadas as diretrizes especificadas na documentação do Antlr4
+* https://github.com/antlr/antlr4/blob/master/doc/lexer-rules.md
 */
 
+// Declaração de fragmentos que serão utilizados em outras regras léxicas
 fragment LETRA : ('a'..'z'|'A'..'Z');
 fragment DIGITO : ('0'..'9');
 
+// Foi utilizada a notação [\\'] para representa o caracter '
+// Pois é um caracter especial na notação do antlr
 CADEIA : ('"'(~'"')*'"') | ([\\'](~[\\'])*[\\']);
 
+// A notação "-> skip" diz ao antlr para ignorar o token
+// No nosso caso estamos ignorando todos os comentários, espaços em branco
+// e quebras de linha
 COMENTARIO : '--'(~[\n]|[\r])+ -> skip;
 
-WS : (' ' | [\t]) -> skip; // Whitespace
+WS : (' ' | [\t]) -> skip; // White Space
 
-EOL : ([\n] | [\r] | [EOF]) -> skip;
+EOL : ([\n] | [\r]) -> skip; // End of Line
 
+// Palavras e simbolos reservados segundo a gramática da Lua
+// Foram declarados antes das demais regras para que não possam ser
+// utilizadas em outro contexto (como um identiifcador por exemplo)
 PALAVRA_RESERVADA : 'and' | 'break' | 'do' | 'else' | 'elseif' |
                     'end' | 'false' | 'for' | 'function' | 'if' |
                     'in' | 'local' | 'nil' | 'not' | 'or' | 'repeat' |
@@ -37,6 +46,7 @@ NUMERO : (DIGITO)+('.'(DIGITO)+)?;
 
 /*
 * Regras Sintáticas
+*
 */
 
 programa : trecho;
@@ -64,10 +74,15 @@ listadenomes : IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.
 
 listaexp : (exp ',')* exp;
 
-//exp : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
-//    expprefixo | construtortabela | exp opbin exp | opunaria exp;
 
-//exp : exp opbin exp | opunaria exp;
+// As regras a baixo foram modificadas para que fosse possível implementar
+// a precedência de operadores.
+
+// Regras originais:
+// exp : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao | expprefixo | construtortabela | exp opbin exp | opunaria exp;
+// opbin : '+' | '-' | '*' | '/' | '^' | '%' | '..' | '<' | '<=' | '>' | '>=' | '==' | '~=' | 'and' | 'or';
+
+// Regras resultantes:
 exp : exp1 opbin7 exp | exp1;
 
 exp1 : exp2 opbin6 exp1 | exp2;
@@ -84,20 +99,43 @@ exp6 : exp7 opbin2 exp6 | exp7;
 
 exp7 : exp_operandos opbin1 exp7 | exp_operandos;
 
+opbin1 : '^';
+
+opbin2 : '*' | '/' | '%';
+
+opbin3 : '+' | '-';
+
+opbin4 : '..';
+
+opbin5 : '<' | '<=' | '>' | '>=' | '==' | '~=';
+
+opbin6 : 'and';
+
+opbin7 : 'or';
+
+opunaria : '-' | 'not' | '#'; // Regra original mantida
 
 exp_operandos : 'nil' | 'false' | 'true' | NUMERO | CADEIA | '...' | funcao |
                 expprefixo | construtortabela ;
+// Fim da alteração de precedência de operadores
 
-//expprefixo : var | chamadadefuncao | '(' exp ')';
 
+// Na gramática fornecida pela documentação da Lua, havia uma recursão
+// não-direta [var, expprefixo, chamadadefuncao], que o antlr não consegue lidar.
+// Foi utilizado o algoritmo apresentado no site abaixo para eliminar essa recursão:
+// http://www.csd.uwo.ca/~moreno/CS447/Lectures/Syntax.html/node8.html
+
+// Regras originais:
+// expprefixo : var | chamadadefuncao | '(' exp ')';
+// chamadadefuncao : expprefixo args | expprefixo ':' IDENTIFICADOR args;
+
+// Regras resultantes:
 expprefixo : IDENTIFICADOR expprefixo_aux | IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);} |
              chamadadefuncao expprefixo_aux | chamadadefuncao | expprefixo_aux |
              '(' exp ')' expprefixo_aux | '(' exp ')';
 
 expprefixo_aux : '[' exp ']' expprefixo_aux | '[' exp ']' |
                  '.' IDENTIFICADOR expprefixo_aux | '.' IDENTIFICADOR;
-
-//chamadadefuncao : expprefixo args | expprefixo ':' IDENTIFICADOR args;
 
 chamadadefuncao : IDENTIFICADOR expprefixo_aux args chamadadefuncao_aux |
                   IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.FUNCAO);} args | IDENTIFICADOR expprefixo_aux args | IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.FUNCAO);} args chamadadefuncao_aux |
@@ -112,6 +150,8 @@ chamadadefuncao_aux : expprefixo_aux args chamadadefuncao_aux |
                       args | expprefixo_aux args | args chamadadefuncao_aux |
                       expprefixo_aux':' IDENTIFICADOR args chamadadefuncao_aux |
                       ':' IDENTIFICADOR args | expprefixo_aux':' IDENTIFICADOR args | ':' IDENTIFICADOR args chamadadefuncao_aux;
+// Fim da eliminação da recursão
+
 
 args : '(' (listaexp)? ')' | construtortabela | CADEIA;
 
@@ -128,22 +168,3 @@ listadecampos : campo (separadordecampos campo)* (separadordecampos)?;
 campo : '[' exp ']' '=' exp | IDENTIFICADOR { TabelaDeSimbolos.adicionarSimbolo($IDENTIFICADOR.text,Tipo.VARIAVEL);} '=' exp | exp;
 
 separadordecampos : ',' | ';';
-
-//opbin : '+' | '-' | '*' | '/' | '^' | '%' | '..' | '<' | '<=' | '>' | '>=' | '==' | '~=' |
-//       'and' | 'or';
-
-opbin1 : '^';
-
-opbin2 : '*' | '/' | '%';
-
-opbin3 : '+' | '-';
-
-opbin4 : '..';
-
-opbin5 : '<' | '<=' | '>' | '>=' | '==' | '~=';
-
-opbin6 : 'and';
-
-opbin7 : 'or';
-
-opunaria : '-' | 'not' | '#';
